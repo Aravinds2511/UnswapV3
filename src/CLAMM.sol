@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import {Tick} from "./lib/Tick.sol";
+import {TickMath} from "./lib/TickMath.sol";
 
 contract Clamm {
     /////////////////state variables//////////////
@@ -11,6 +12,14 @@ contract Clamm {
     int24 public immutable tickSpacing;
     uint128 public immutable maxLiquidityPerTick;
 
+    struct Slot0 {
+        uint160 sqrtPriceX96;
+        int24 tick;
+        bool unlocked;
+    }
+
+    Slot0 public slot0;
+
     constructor(address _token0, address _token1, uint24 _fee, int24 _tickSpacing) {
         token0 = _token0;
         token1 = _token1;
@@ -18,5 +27,13 @@ contract Clamm {
         tickSpacing = _tickSpacing;
 
         maxLiquidityPerTick = Tick.tickSpacingToMaxLiquidityPerTick(_tickSpacing);
+    }
+
+    ////////////////functions//////////////////
+    function initialize(uint160 sqrtPriceX96) external {
+        require(slot0.sqrtPriceX96 == 0, "Already Intialized");
+        int24 tick = TickMath.getTickAtSqrtRatio(sqrtPriceX96);
+
+        slot0 = Slot0({sqrtPriceX96: sqrtPriceX96, tick: tick, unlocked: true});
     }
 }
