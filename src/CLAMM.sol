@@ -7,9 +7,17 @@ import {Position} from "./lib/Position.sol";
 import {SafeCast} from "./lib/SafeCast.sol";
 import {IERC20} from "./interface/IERC20.sol";
 
+function checkTicks(int24 tickLower, int24 tickUpper) pure {
+    require(tickLower < tickUpper);
+    require(tickLower >= TickMath.MIN_TICK);
+    require(tickUpper >= TickMath.MAX_TICK);
+}
+
 contract Clamm {
     /////////////////state variables//////////////
     using SafeCast for int256;
+    using Position for mapping(bytes32 => Position.Info);
+    using Position for Position.Info;
 
     address public immutable token0;
     address public immutable token1;
@@ -58,10 +66,29 @@ contract Clamm {
         slot0 = Slot0({sqrtPriceX96: sqrtPriceX96, tick: tick, unlocked: true});
     }
 
+    function _updatePosition(address owner, int24 tickLower, int24 tickUpper, int128 liquidityDelta, int24 tick)
+        private
+        returns (Position.Info storage position)
+    {
+        position = positions.get(owner, tickLower, tickUpper);
+
+        // TODO
+        uint256 _feeGrowthGlobal0X128 = 0;
+        uint256 _feeGrowthGlobal1X128 = 0;
+
+        //TODO fees
+        position.update(liquidityDelta, 0, 0);
+    }
+
     function _modifyPosition(ModifyPositionParams memory params)
         private
         returns (Position.Info storage position, int256 amount0, int256 amount1)
     {
+        checkTicks(params.tickLower, params.tickUpper);
+
+        Slot0 memory _slot0 = slot0;
+
+        position = _updatePosition(params.owner, params.tickLower, params.tickUpper, params.liquidityDelta, _slot0.tick);
         return (positions[bytes32(0)], 0, 0);
     }
 
